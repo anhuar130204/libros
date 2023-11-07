@@ -39,6 +39,7 @@ class _HomePageState extends State<HomePage> {
   TextEditingController edicionController = TextEditingController();
   TextEditingController isbnController = TextEditingController();
   TextEditingController controlNumController = TextEditingController();
+  TextEditingController searchController = TextEditingController();
   String? pagina = '';
   String? autor = '';
   String? edicion = '';
@@ -89,6 +90,52 @@ class _HomePageState extends State<HomePage> {
     isUpdating = false;
   }
 
+  searchByTitle() {
+    String searchText = searchController.text;
+    setState(() {
+      Bookss = dbHelper.searchBooksByTitle(searchText);
+    });
+  }
+
+  validate() {
+    if (formKey.currentState!.validate()) {
+      formKey.currentState!.save();
+      if (photoname == '') {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Por favor, seleccione una foto antes de guardar.'),
+        ));
+        return;
+      } else if (isUpdating) {
+        Book book = Book(
+          controlNum: currentUserId,
+          titulo: titulo,
+          autor: autor,
+          editorial: editorial,
+          pagina: pagina,
+          edicion: edicion,
+          isbn: isbn,
+          photoName: photoname,
+        );
+        dbHelper.update(book);
+        isUpdating = false;
+      } else {
+        Book book = Book(
+          controlNum: null,
+          titulo: titulo,
+          autor: autor,
+          editorial: editorial,
+          pagina: pagina,
+          edicion: edicion,
+          isbn: isbn,
+          photoName: photoname,
+        );
+        dbHelper.save(book);
+      }
+      clearFields();
+      refreshList();
+    }
+  }
+
   Widget userForm() {
     return Form(
       key: formKey,
@@ -100,6 +147,17 @@ class _HomePageState extends State<HomePage> {
           verticalDirection: VerticalDirection.down,
           children: [
             const SizedBox(height: 10),
+            TextFormField(
+              controller: searchController,
+              keyboardType: TextInputType.text,
+              decoration: const InputDecoration(
+                labelText: 'Buscar por título',
+              ),
+            ),
+            ElevatedButton(
+              onPressed: searchByTitle,
+              child: const Text('Buscar'),
+            ),
             TextFormField(
               controller: tituloController,
               keyboardType: TextInputType.text,
@@ -142,7 +200,6 @@ class _HomePageState extends State<HomePage> {
               },
               onSaved: (val) => editorial = val!,
             ),
-
             TextFormField(
               controller: paginaController,
               keyboardType: TextInputType.number,
@@ -156,9 +213,6 @@ class _HomePageState extends State<HomePage> {
               validator: (val) {
                 if (val!.isEmpty) {
                   return 'Ingrese el número de Paginas';
-                }
-                if (val.length != 10) {
-                  return 'El número de Paginas ';
                 }
                 if (!RegExp(r'^[0-9]*$').hasMatch(val)) {
                   return 'Ingrese solo números';
@@ -185,7 +239,7 @@ class _HomePageState extends State<HomePage> {
               controller: isbnController,
               keyboardType: TextInputType.text,
               decoration: const InputDecoration(
-                labelText: 'ISBN',
+                labelText: 'isbn',
               ),
               validator: (val) {
                 if (val!.isEmpty) {
@@ -193,7 +247,7 @@ class _HomePageState extends State<HomePage> {
                 }
                 return null;
               },
-              onSaved: (val) => edicion = val!,
+              onSaved: (val) => isbn = val,
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -201,8 +255,9 @@ class _HomePageState extends State<HomePage> {
                 MaterialButton(
                   onPressed: validate,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      side: const BorderSide(color: Colors.red)),
+                    borderRadius: BorderRadius.circular(20),
+                    side: const BorderSide(color: Colors.red),
+                  ),
                   child: Text(isUpdating ? "Actualizar" : "Insertar"),
                 ),
                 MaterialButton(
@@ -210,10 +265,11 @@ class _HomePageState extends State<HomePage> {
                     pickImageFromGallery();
                   },
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      side: const BorderSide(color: Colors.green)),
+                    borderRadius: BorderRadius.circular(20),
+                    side: const BorderSide(color: Colors.green),
+                  ),
                   child: const Text("Seleccionar imagen"),
-                )
+                ),
               ],
             ),
           ],
@@ -227,13 +283,13 @@ class _HomePageState extends State<HomePage> {
       scrollDirection: Axis.horizontal,
       child: DataTable(
         columns: const [
-          DataColumn(label: Text('Photo')),
-          DataColumn(label: Text('Titulo')),
+        DataColumn(label: Text('Photo')),
           DataColumn(label: Text('Autor')),
+          DataColumn(label: Text('Titulo')), // Cambia el orden aquí
           DataColumn(label: Text('Editorial')),
           DataColumn(label: Text('Pagina')),
           DataColumn(label: Text('Edicion')),
-          DataColumn(label: Text('Isbn')),
+          DataColumn(label: Text('isbn')),
           DataColumn(label: Text('Delete')),
         ],
         rows: Bookss!
@@ -284,69 +340,31 @@ class _HomePageState extends State<HomePage> {
 
   Widget list() {
     return Expanded(
-        child: SingleChildScrollView(
-          child: FutureBuilder(
-              future: Bookss,
-              builder: (context, AsyncSnapshot<dynamic> snapshot) {
-                if (snapshot.hasData) {
-                  print(snapshot.data);
-                  return userDataTable(snapshot.data);
-                }
-                if (!snapshot.hasData) {
-                  print("Data Not Found");
-                }
-                return const CircularProgressIndicator();
-              }),
-        ));
+      child: SingleChildScrollView(
+        child: FutureBuilder(
+            future: Bookss,
+            builder: (context, AsyncSnapshot<dynamic> snapshot) {
+              if (snapshot.hasData) {
+                print(snapshot.data);
+                return userDataTable(snapshot.data);
+              }
+              if (!snapshot.hasData) {
+                print("Data Not Found");
+              }
+              return const CircularProgressIndicator();
+            }),
+      ),
+    );
   }
-
-  validate() {
-    if (formKey.currentState!.validate()) {
-      formKey.currentState!.save();
-      if (photoname == '') {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Por favor, seleccione una foto antes de guardar.'),
-        ));
-        return;
-      }
-      else if(isUpdating) {
-        Book book = Book(
-            controlNum: currentUserId,
-            titulo: titulo,
-            autor: autor,
-            editorial: editorial,
-            pagina: pagina,
-            edicion: edicion,
-            isbn: isbn,
-            photoName: photoname);
-        dbHelper.update(book);
-        isUpdating = false;
-      } else {
-        Book book = Book(
-            controlNum: null,
-            titulo: titulo,
-            autor: autor,
-            editorial: editorial,
-            pagina: pagina,
-            edicion: edicion,
-            isbn: isbn,
-            photoName: photoname);
-        dbHelper.save(book);
-      }
-      clearFields();
-      refreshList();
-    }
-  }
-
-
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text('SQLite DB'),
+        title: const Text('Libros'),
         centerTitle: true,
+        backgroundColor: Colors.pinkAccent,
       ),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,

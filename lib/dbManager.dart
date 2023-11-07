@@ -3,7 +3,6 @@ import 'package:path/path.dart';
 import 'dart:async';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io' as io;
-
 import 'package:libros/book.dart';
 
 class DBManager {
@@ -48,6 +47,16 @@ class DBManager {
     book.controlNum = await dbClient!.insert(TABLE, book.toMap());
     return book;
   }
+  Future<List<Book>> searchBooksByTitle(String title) async {
+    final dbClient = await db;
+    final result = await dbClient!.query(
+      TABLE,
+      where: '$TITULO LIKE ?',
+      whereArgs: ['%$title%'],
+    );
+    return result.map((json) => Book.formMap(json)).toList();
+  }
+
   //Select
   Future<List<Book>> getBooks()async{
     var dbClient = await (db);
